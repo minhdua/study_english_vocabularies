@@ -27,3 +27,25 @@ ALTER TABLE new_words drop primary key, add primary key (english,unit_code);
 alter table new_words
 ADD FOREIGN KEY (unit_code) REFERENCES units(unit_code);
 
+
+create table paragraph(
+	id int primary key auto_increment,
+	topic varchar(255)
+);
+
+create table sentences_paragraph(
+	id int primary key auto_increment,
+	english varchar(255),
+    vietnamese varchar(255),
+    paragraph_id int references paragraph(`id`) on delete cascade,
+    sentence_order int,
+    constraint `unique_paragraph_id_order` unique(paragraph_id,sentence_order)
+);
+
+create table words_paragraph(
+	id int primary key auto_increment,
+    english varchar(255),
+    vietnamese varchar(255),
+    number_of int default 1,
+    paragraph_id int references paragraph(`id`) on delete cascade
+);

@@ -48,5 +48,6 @@ TYPE_WORD = {
     "V":"Verb",
     "Adv":"Adverb",
     "Pre":"Preposition",
-    "NP":"Noun phrase"
+    "Np":"Noun phrase",
+    "":"Unknown"
 }

@@ -7,6 +7,7 @@ from os import system
 import random
 from termcolor import colored
 import pyttsx3
+import eng_to_ipa as ipa
 
 dash ="=============================================================="
 dashln =dash+"\n"
@@ -39,6 +40,7 @@ def main_menu():
     print(dashln)
     print("[1]. Update vocabulary!")
     print("[2]. Study vocabulary!")
+    print("[3]. Revise vocabulary!")
 
     print("\n[0]. Exit!")
     print("-----------------------------------------\n")
@@ -78,20 +80,15 @@ def vocabularies_of_unit():
                 if (i % 15 == 0):
                     input(">>> Enter to continue!")
                 print("\n",u.unit_code," ===> ",u.unit_topic)
-        elif ((len(command.split()) > 1) and command.startswith("u")):
-            try:
-                units = get_all_unit()
-                unit_code = units[int(command.split()[1])-1].unit_code;
-                return get_by_unit(unit_code);
-            except:
-                print("element index not found!")
+        elif (get_by_unit(unit_code) != None):
+            return get_by_unit(unit_code)
         elif (command == '-q' or command == "-quit"):
             reset_menu("sub_menu2")
             break
         elif (get_one_unit(unit_code) == None):
             print("\nunit code not found!")
         else:
-            return get_by_unit(unit_code)
+            return get_vocabularies()
     return None
 
 
@@ -111,30 +108,49 @@ def check_read(list_words):
         print("[",index,"].",w.english," >>> ",w.vietnamese)
     try:
         index = int(input("Enter/index to Continue...")) -1
+        print(index)
     except:
         index = 0
+    list_words = list_words[index:]
     random.shuffle(list_words)
     list_wrong_words = []
 
     for w in list_words:
         index += 1
         print("[",index,"]. CHECK READ")
-        print("Example: ?")
-        print("Mean: ",high_light(w.vietnamese,w.sentent_vietnamese,CYELLOW2))
+        print("English: ?")
+        print("VietNamese:",w.vietnamese)
+        print("Example: ",high_light(w.vietnamese,w.sentent_vietnamese,CYELLOW2))
         print(dash)
 
-        input_sentence = input(">>> ")
-        if(input_sentence == "-q" or input_sentence == "-quit"):
-            return []
-        if(standard_string(input_sentence.lower())
-                == standard_string(w.sentent_english.lower())):
-            print("Example: "+high_light(w.english,w.sentent_english,CBLUE2))
+        input_word = input(">>> ")
+        if(input_word == "-q" or input_word == "-quit"):
+            list_wrong_words = []
+            break
+        elif (input_word == "-w" or input_word == "-wrong"):
+            break
+        if(input_word.lower() == w.english.lower()):
+            print("English: "+high_light(w.english,None,CBLUE2))
             ok()
-
+            sound(w.english)
+            increment_right_times(w.english)
         else:
             list_wrong_words.append(w)
-            print("===> ",high_light(w.english,w.sentent_english,CRED2))
+            print("English: "+high_light(w.english,None,CRED2))
+            increment_wrong_times(w.english)
             wrong()
+        # input_sentence = input(">>> ")
+        # if(input_sentence == "-q" or input_sentence == "-quit"):
+        #     return []
+        # if(standard_string(input_sentence.lower())
+        #         == standard_string(w.sentent_english.lower())):
+        #     print("Example: "+high_light(w.english,w.sentent_english,CBLUE2))
+        #     ok()
+        #
+        # else:
+        #     list_wrong_words.append(w)
+        #     print("===> ",high_light(w.english,w.sentent_english,CRED2))
+        #     wrong()
 
 
     return list_wrong_words
@@ -151,6 +167,7 @@ def check_listen(list_words):
     except:
         index = 0
 
+    list_words = list_words[index:]
     random.shuffle(list_words)
     list_wrong_words = []
     for w in list_words:
@@ -165,12 +182,15 @@ def check_listen(list_words):
             return []
         if(input_word.lower() == w.english.lower()):
             print("English: "+high_light(w.english,None,CBLUE2))
+            print("VietNamese: ",high_light(w.vietnamese,None,CYELLOW2))
             ok()
+            increment_right_times(w.english)
 
         else:
             list_wrong_words.append(w)
             print("English: "+high_light(w.english,None,CRED2))
             wrong()
+            increment_wrong_times(w.english)
 
 
     return list_wrong_words
@@ -191,6 +211,7 @@ def word_info(idx,word):
     print("Pronunce: /",word.pronounce,"/")
     print("Type: ",TYPE_WORD[word.type_word])
     print("Example: ",high_light(word.english,word.sentent_english,CBLUE2))
+    print("IPA:    /",ipa.convert(word.sentent_english),"/")
     print("Mean: ",high_light(word.vietnamese,word.sentent_vietnamese,CYELLOW2))
 
     print("\nRight times: ",colored(word.right_times, 'green'))
@@ -207,6 +228,7 @@ def study_word(idx,word):
                 or (input_word == "-nn" or input_word == "-nextnot")
                 or (input_word == "-q"or input_word == "-quit")
                 or (input_word.startswith("-j"))
+                or (input_word.startswith("-ja"))
                 or (input_word == "-u" or input == "-update")):
                 return input_word
             elif(input_word == "-cl"or input_word == "-clear"):
@@ -234,6 +256,7 @@ def study_word(idx,word):
                         == standard_string(word.sentent_english.lower()))):
                 word.right_times += 1
                 increment_right_times(word.english)
+                print("Vietnamese: ",colored(word.vietnamese, 'yellow'))
                 sound(input_word.lower())
             else:
                 word.wrong_times +=1
@@ -242,6 +265,7 @@ def study_word(idx,word):
 
 def study_start(vocabularies):
     i = 0
+    global session_word
     for v in vocabularies:
         i += 1
         print("[",i,"] ",v.english," ===> ",v.vietnamese)
@@ -260,13 +284,22 @@ def study_start(vocabularies):
             i += 1
         elif(i>0 and (input_word == "-p" or input_word == "-prefix")):
             i -= 1
+        elif(input_word.startswith("-ja")):
+            try:
+                i = int(input_word[3:]) - 1
+                session_word = []
+                for ii in range (i):
+                    session_word.append(vocabularies[ii])
+            except:
+                pass
         elif(input_word.startswith("-j")):
             try:
                 i = int(input_word[2:]) - 1
             except:
                 pass
         elif (input_word == "-u" or input_word == "-update"):
-            vocabularies = vocabularies_of_unit()
+            update_vocabulary()
+            vocabularies = get_vocabularies()
         elif(input_word == "-q"or input_word == "-quit"):
             reset_menu("sub_menu2")
             break
@@ -275,7 +308,7 @@ def study_vocabulary():
     sub_option = -1
     while sub_option != 0:
         if(sub_option == 1):
-            vocabularies = vocabularies_of_unit()
+            vocabularies = get_vocabularies()
             if(vocabularies != None):
                 if(len(vocabularies) > 0):
                     study_start(vocabularies)
@@ -294,16 +327,70 @@ def study_vocabulary():
             sub_option = -1
     reset_menu("main_menu")
 
+def get_vocabularies():
+    global session_word
+    session_word = []
+    # get all unit
+    units = get_all_unit()
+    for i in range(len(units)):
+        print("["+str(i+1)+"]     Code:",units[i].unit_code,"     Topic:",units[i].unit_topic)
+
+    print("\n 0 >>>If you want quit!")
+    # get chooses
+    chooses = input("input choose: ")
+    if(chooses.startswith("0")):
+        return
+    u_list = []
+    for u in chooses.split(","):
+        us = u.split("-")
+        if len(us)>1 :
+            try:
+                start = int(us[0])
+                end = min(int(us[1])+1,len(units)+1)
+                for i in range(start,end):
+                    u_list.append(i)
+            except:
+                pass
+        else:
+             u_list.append(u)
+
+    # get unit code list
+
+    unit_code_list = []
+    for i in u_list:
+        try:
+            idx = int(i)-1
+            unit_code_list.append(units[idx].unit_code)
+        except:
+            pass
+
+    # get vocabularies
+    vocabularies = []
+    for uc in unit_code_list:
+        vocabularies.extend(get_by_unit(uc))
+    return vocabularies
+
+def revise_vocabulary():
+    vocabularies = get_vocabularies()
+    # revise
+    lst_words_wrong = check_read(vocabularies)
+    while len(lst_words_wrong) > 0 :
+        lst_words_wrong = check_read(lst_words_wrong)
+
 def main():
+    global session_word
+    session_word=[]
     option = -1
     while (option != 0):
         if (option == 1):
             update_vocabulary()
         elif (option == 2):
             study_vocabulary()
-        else:
-            reset_menu("main_menu")
+        elif (option == 3):
+            revise_vocabulary()
+
         try:
+            reset_menu("main_menu")
             option = int(input(">>> Your choice: "))
         except:
             option = -1
